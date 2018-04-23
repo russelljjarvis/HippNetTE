@@ -1,8 +1,8 @@
 Visualize this modelled network:
 
-[https://drpetty.shinyapps.io/NetworkVisualization/](centrality/firing rate)
+(https://drpetty.shinyapps.io/NetworkVisualization/)[centrality/firing rate]
 
-[https://drpetty.shinyapps.io/AdjacencyMatrix/](chord)
+(https://drpetty.shinyapps.io/AdjacencyMatrix/)[chord]
 
 
 

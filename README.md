@@ -1,3 +1,8 @@
+Visualize this modelled network:
+https://drpetty.shinyapps.io/NetworkVisualization/
+https://drpetty.shinyapps.io/AdjacencyMatrix/
+
+
 
 # Reproduction of the group Assignment MAT/BIO 494 Data Analysis in Neuroscience
 

@@ -3,7 +3,10 @@ FROM russelljarvis/neuronunit
 #FROM jupyter/base-notebook
 ENV QT_QPA_PLATFORM offscreen
 USER jovyan
-#RUN sudo apt-get install --fix-missing && sudo apt-get install -f && sudo apt-get autoremove && sudo apt update && sudo apt upgrade 
+#RUN sudo apt-get install --fix-missing
+RUN sudo apt-get -y autoremove
+RUN sudo apt -y update
+RUN sudo apt -y upgrade 
 RUN pip uninstall -y neo
 RUN /opt/conda/bin/pip3 install dask psutil natsort pyspike pyNN lazyarray neo matplotlib pyopencl
 
@@ -28,3 +31,5 @@ RUN python3 -c "from idtxl.multivariate_te import MultivariateTE; network_analys
 WORKDIR $HOME/QIASCOLI
 RUN sudo chown -R jovyan $HOME
 USER jovyan
+RUN python3 forked.py
+RUN python3 sate.py

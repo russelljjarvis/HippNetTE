@@ -22,7 +22,6 @@ import socket
 
 import pandas as pd
 import networkx as nx
-import pickle
 
 
 
@@ -39,15 +38,6 @@ import pandas as pd
 import os
 
 
-try:
-   import pyNN.spiNNaker as sim
-except:
-    import pyNN.neuron as sim
-    nproc = sim.num_processes()
-    nproc = 8
-    host_name = socket.gethostname()
-    node_id = sim.setup(timestep=0.01, min_delay=1.0)#, **extra)
-    print("Host #%d is on %s" % (node_id + 1, host_name))
 
 
 def prj_change(prj,wg):
@@ -58,6 +48,18 @@ def prj_check(prj):
         for i in w:
             print(i)
 def sim_runner(wg):
+    import pickle
+    try:
+       import pyNN.spiNNaker as sim
+    except:
+       import pyNN.neuron as sim
+       nproc = sim.num_processes()
+       nproc = 8
+       host_name = socket.gethostname()
+       node_id = sim.setup(timestep=0.01, min_delay=1.0)#, **extra)
+       print("Host #%d is on %s" % (node_id + 1, host_name))
+
+
     # inputs wg (weight gain factor)
     # outputs neo epys recording vectors.
 

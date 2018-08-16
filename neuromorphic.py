@@ -1,18 +1,12 @@
 
 # This works for sure:
-import pyNN.spiNNaker as sim
-import numpy as np
-import matplotlib.pyplot as plt
-sim.setup(timestep=1.0, min_delay=1.0)
-
+#import pyNN.spiNNaker as sim
+#import numpy as np
+#import matplotlib.pyplot as plt
+#sim.setup(timestep=1.0, min_delay=1.0)
 
 import pacman
-print(dir(pacman))
-
-
 import os
-
-
 import sys
 import numpy as np
 
@@ -20,7 +14,6 @@ from pyNN.spiNNaker import STDPMechanism
 import copy
 from pyNN.random import RandomDistribution, NumpyRNG
 
-# this does not work.
 
 from pyNN.random import RandomDistribution, NumpyRNG
 from pyNN.spiNNaker import STDPMechanism, SpikePairRule, AdditiveWeightDependence, FromListConnector
@@ -57,25 +50,9 @@ def prj_check(prj):
 def sim_runner(wg):
     # inputs wg (weight gain factor)
     # outputs neo epys recording vectors.
-    # nproc = sim.num_processes()
-    # node = sim.rank()
-
     import pickle
     import pyNN.spiNNaker as sim
-    '''
-    except:
-    import pyNN.neuron as sim
-    nproc = sim.num_processes()
-    nproc = 8
-    host_name = socket.gethostname()
-    node_id = sim.setup(timestep=0.01, min_delay=1.0)#, **extra)
-    print("Host #%d is on %s" % (node_id + 1, host_name))
-    '''
 
-
-    threads = 1
-    rngseed  = 98765
-    parallel_safe = False
 
     try:
         os.system('wget https://github.com/russelljjarvis/HippNetTE/blob/master/wire_map_online.p?raw=true')

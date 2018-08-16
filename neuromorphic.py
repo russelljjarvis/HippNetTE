@@ -1,31 +1,54 @@
+spiNNaker = True
+if spiNNaker == True:
+    import pacman
+    print(dir(pacman))
+    import pyNN.spiNNaker as sim
+    import matplotlib.pyplot as plt
+    sim.setup(timestep=1.0, min_delay=1.0)
+    from pyNN.spiNNaker import STDPMechanism
+    from pyNN.random import RandomDistribution, NumpyRNG
+    from pyNN.random import RandomDistribution, NumpyRNG
+    from pyNN.spiNNaker import STDPMechanism, SpikePairRule, AdditiveWeightDependence, FromListConnector
+    from pyNN.spiNNaker import Projection, OneToOneConnector
+    from pyNN.spiNNaker import ParameterSpace
+    import pyNN.spiNNaker as sim
 
-# This works for sure:
-#import pyNN.spiNNaker as sim
-#import numpy as np
-#import matplotlib.pyplot as plt
-#sim.setup(timestep=1.0, min_delay=1.0)
 
-import pacman
+if spiNNaker == False:
+    from pyNN.random import RandomDistribution, NumpyRNG
+    import pyNN.neuron as neuron
+    from pyNN.neuron import h	#from pyNN.spiNNaker import h
+    from pyNN.neuron import StandardCellType, ParameterSpace
+    from pyNN.random import RandomDistribution, NumpyRNG
+    from pyNN.random import RandomDistribution, NumpyRNG
+    from pyNN.neuron import STDPMechanism, SpikePairRule, AdditiveWeightDependence, FromListConnector, TsodyksMarkramSynapse
+    from pyNN.neuron import Projection, OneToOneConnector
+    import socket
+    import pyNN.neuron as sim
+
+    nproc = sim.num_processes()
+    nproc = 8
+    host_name = socket.gethostname()
+    node_id = sim.setup(timestep=0.01, min_delay=1.0)#, **extra)
+    print("Host #%d is on %s" % (node_id + 1, host_name))
+
+    threads = 1
+    rngseed  = 98765
+    parallel_safe = False
+
+
+
 import os
+import copy
+import numpy as np
 import sys
 import numpy as np
-
-from pyNN.spiNNaker import STDPMechanism
-import copy
-from pyNN.random import RandomDistribution, NumpyRNG
-
-
-from pyNN.random import RandomDistribution, NumpyRNG
-from pyNN.spiNNaker import STDPMechanism, SpikePairRule, AdditiveWeightDependence, FromListConnector
-from pyNN.spiNNaker import Projection, OneToOneConnector
 from numpy import arange
 import pyNN
 from pyNN.utility import get_simulator, init_logging, normalized_filename
 import random
 import socket
-
 import pandas as pd
-
 import matplotlib
 matplotlib.use('Agg')
 
@@ -37,6 +60,7 @@ import pandas as pd
 import os
 os.listdir(".")
 
+import pickle
 
 
 
@@ -47,13 +71,13 @@ def prj_check(prj):
     for w in prj.weightHistogram():
         for i in w:
             print(i)
-def sim_runner(wg):
+def sim_runner(wg,sim):
     # inputs wg (weight gain factor)
     # outputs neo epys recording vectors.
-    import pickle
-    import pyNN.spiNNaker as sim
-
-
+    try:
+        import pyNN.neuron as sim
+    except:
+        import pyNN.spiNNaker as sim
     try:
         os.system('wget https://github.com/russelljjarvis/HippNetTE/blob/master/wire_map_online.p?raw=true')
         #os.system('mv wire_map_online.p?raw=true wire_map_online.p')
@@ -66,20 +90,14 @@ def sim_runner(wg):
         # https://github.com/Hippocampome-Org/GraphTheory/issues?q=is%3Aissue+is%3Aclosed
         # scrape hippocamome connectivity data, that I intend to use to program neuromorphic hardware.
         # conditionally get files if they don't exist.
-
         # This is literally the starting point of the connection map
         path_xl = '_hybrid_connectivity_matrix_20171103_092033.xlsx'
-
         if not os.path.exists(path_xl):
             os.system('wget https://github.com/Hippocampome-Org/GraphTheory/files/1657258/_hybrid_connectivity_matrix_20171103_092033.xlsx')
-
         xl = pd.ExcelFile(path_xl)
-
-
         dfall = xl.parse()
         dfall.loc[0].keys()
         dfm = dfall.as_matrix()
-
         rcls = dfm[:,:1] # real cell labels.
         rcls = rcls[1:]
         rcls = { k:v for k,v in enumerate(rcls) } # real cell labels, cast to dictionary
@@ -152,7 +170,7 @@ def sim_runner(wg):
 
     internal_conn_ee = sim.FromListConnector(EElist)
     ee = internal_conn_ee.conn_list
-
+    print(np.shape(ee))
     ee_srcs = ee[:,0]
     ee_tgs = ee[:,1]
 
@@ -241,14 +259,13 @@ def sim_runner(wg):
 
     rng = NumpyRNG(seed=64754)
 
-
-
     all_cells = sim.Population(len(index_exc)+len(index_inh), sim.Izhikevich(a=0.02, b=0.2, c=-65, d=8, i_offset=0))
-    pall_cellsop.record("spikes")
+    all_cells.record("spikes")
     sim.run(100)# delay 100ms
     pop_exc = sim.PopulationView(all_cells,index_exc)
     pop_inh = sim.PopulationView(all_cells,index_inh)
 
+    # add random variation into Izhi parameters
     for pe in pop_exc:
         pe = all_cells[pe]
         r = random.uniform(0.0, 1.0)
@@ -296,7 +313,6 @@ def sim_runner(wg):
     # All cells in the network are in a quiescent state, so its not a surprise that xthere are no spikes
     ##
 
-    sim = pyNN.spiNNaker
     arange = np.arange
     import re
     all_cells.record(['v','spikes'])  # , 'u'])
@@ -315,35 +331,25 @@ def sim_runner(wg):
 
     return
 
-_ = sim_runner(0.5)
+_ = sim_runner(0.5,sim)
 
 def data_dump(plot_inhib,plot_excit,plot_EE,plot_IE,plot_II,plot_EI,filtered):
+    import pandas as pd
+    from scipy.sparse import coo_matrix
+    import pickle
 
     with open('graph_inhib.p','wb') as f:
        pickle.dump(plot_inhib,f, protocol=2)
 
-
-    import pickle
     with open('graph_excit.p','wb') as f:
        pickle.dump(plot_excit,f, protocol=2)
 
-
-    #with open('cell_names.p','wb') as f:
-    #    pickle.dump(rcls,f)
-    import pandas as pd
     pd.DataFrame(plot_EE).to_csv('ee.csv', index=False)
-
-    import pandas as pd
     pd.DataFrame(plot_IE).to_csv('ie.csv', index=False)
-
-    import pandas as pd
     pd.DataFrame(plot_II).to_csv('ii.csv', index=False)
-
-    import pandas as pd
     pd.DataFrame(plot_EI).to_csv('ei.csv', index=False)
 
 
-    from scipy.sparse import coo_matrix
     m = np.matrix(filtered[1:])
 
     bool_matrix = np.add(plot_excit,plot_inhib)
@@ -385,8 +391,6 @@ def data_dump(plot_inhib,plot_excit,plot_EE,plot_IE,plot_II,plot_EI,filtered):
     p = 0.25 # probability of instead wiring to a random long range destination.
     ni = len(plot_inhib)# size of small world network
     small_world_ring_inhib   = nx.watts_strogatz_graph(ni,mean_conns,0.25)
-
-    import pickle
 
     with open('cell_names.p','wb') as f:
         pickle.dump(rcls,f)

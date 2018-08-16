@@ -5,15 +5,16 @@ import os
 
 import sys
 import numpy as np
-from pyNN.neuron import STDPMechanism
+
+from pyNN.spiNNaker import STDPMechanism
 import copy
 from pyNN.random import RandomDistribution, NumpyRNG
-import pyNN.neuron as neuron
-from pyNN.neuron import h
-from pyNN.neuron import StandardCellType, ParameterSpace
+import pyNN.spiNNaker as neuron
+#from pyNN.spiNNaker import h
+from pyNN.spiNNaker import StandardCellType, ParameterSpace
 from pyNN.random import RandomDistribution, NumpyRNG
-from pyNN.neuron import STDPMechanism, SpikePairRule, AdditiveWeightDependence, FromListConnector, TsodyksMarkramSynapse
-from pyNN.neuron import Projection, OneToOneConnector
+from pyNN.spiNNaker import STDPMechanism, SpikePairRule, AdditiveWeightDependence, FromListConnector, TsodyksMarkramSynapse
+from pyNN.spiNNaker import Projection, OneToOneConnector
 from numpy import arange
 import pyNN
 from pyNN.utility import get_simulator, init_logging, normalized_filename
@@ -36,6 +37,7 @@ import matplotlib.pyplot as plt
 import pickle
 import pandas as pd
 import os
+os.listdir(".")
 
 
 
@@ -48,23 +50,23 @@ def prj_check(prj):
         for i in w:
             print(i)
 def sim_runner(wg):
-    import pickle
-    try:
-       import pyNN.spiNNaker as sim
-    except:
-       import pyNN.neuron as sim
-       nproc = sim.num_processes()
-       nproc = 8
-       host_name = socket.gethostname()
-       node_id = sim.setup(timestep=0.01, min_delay=1.0)#, **extra)
-       print("Host #%d is on %s" % (node_id + 1, host_name))
-
-
     # inputs wg (weight gain factor)
     # outputs neo epys recording vectors.
-
     # nproc = sim.num_processes()
     # node = sim.rank()
+
+    import pickle
+    import pyNN.spiNNaker as sim
+    '''
+    except:
+    import pyNN.neuron as sim
+    nproc = sim.num_processes()
+    nproc = 8
+    host_name = socket.gethostname()
+    node_id = sim.setup(timestep=0.01, min_delay=1.0)#, **extra)
+    print("Host #%d is on %s" % (node_id + 1, host_name))
+    '''
+
 
     threads = 1
     rngseed  = 98765
@@ -304,7 +306,7 @@ def sim_runner(wg):
     # All cells in the network are in a quiescent state, so its not a surprise that xthere are no spikes
     ##
 
-    sim = pyNN.neuron
+    sim = pyNN.spiNNaker
     arange = np.arange
     import re
     all_cells.record(['v','spikes'])  # , 'u'])

@@ -1,47 +1,122 @@
 
 # Code for finding the the rheobase current injection values of excitatory and inhibitory neurons.
+import os
 
-'''
 
-from neuronunit.models.reduced import ReducedModel
-from neuronunit.optimization import get_neab
-model = ReducedModel(get_neab.LEMS_MODEL_PATH,name=str('vanilla'),backend=('NEURON'))
-attrs = {'a':0.02, 'b':0.2, 'c':-65+15*0.5, 'd':8-0.5**2 }
-#from neuronunit.optimization.data_transport_container import DataTC
-#dtc = DataTC()
-from neuronunit.tests import fi
-model.set_attrs(attrs)
-from neuronunit.optimization import get_neab
-rtp = get_neab.tests[0]
-rheobase0 = rtp.generate_prediction(model)
-rheobase = rheobase0
-attrs2 = {'a':0.02+0.08*0.5, 'b':0.2-0.05*0.5, 'c':-65, 'd':2 }
-#, i_offset=0)
-#attrs = {'a':0.02, 'b':0.2, 'c':-65+15*0.5, 'd':8-0.5**2 }
-#from neuronunit.optimization.data_transport_container import DataTC
-#dtc = DataTC()
-from neuronunit.tests import fi
-model.set_attrs(attrs2)
-from neuronunit.optimization import get_neab
-rtp = get_neab.tests[0]
-rheobase1 = rtp.generate_prediction(model)
-print(rheobase0['value'],rheobase1['value'])
-assert rheobase0['value'] != rheobase1['value']
-'''
+import sys
+import numpy as np
+from pyNN.neuron import STDPMechanism
+import copy
+from pyNN.random import RandomDistribution, NumpyRNG
+import pyNN.neuron as neuron
+from pyNN.neuron import h
+from pyNN.neuron import StandardCellType, ParameterSpace
+from pyNN.random import RandomDistribution, NumpyRNG
+from pyNN.neuron import STDPMechanism, SpikePairRule, AdditiveWeightDependence, FromListConnector, TsodyksMarkramSynapse
+from pyNN.neuron import Projection, OneToOneConnector
+from numpy import arange
+import pyNN
+from pyNN.utility import get_simulator, init_logging, normalized_filename
+import random
+import socket
+#from neuronunit.optimization import get_neab
+sim = pyNN.neuron
+
+def data_dump(plot_inhib,plot_excit,plot_EE,plot_IE,plot_II,plot_EI,filtered):
+
+    import pandas as pd
+    import networkx as nx
+    import pickle
+
+    with open('graph_inhib.p','wb') as f:
+       pickle.dump(plot_inhib,f, protocol=2)
+
+
+    import pickle
+    with open('graph_excit.p','wb') as f:
+       pickle.dump(plot_excit,f, protocol=2)
+
+
+    #with open('cell_names.p','wb') as f:
+    #    pickle.dump(rcls,f)
+    import pandas as pd
+    pd.DataFrame(plot_EE).to_csv('ee.csv', index=False)
+
+    import pandas as pd
+    pd.DataFrame(plot_IE).to_csv('ie.csv', index=False)
+
+    import pandas as pd
+    pd.DataFrame(plot_II).to_csv('ii.csv', index=False)
+
+    import pandas as pd
+    pd.DataFrame(plot_EI).to_csv('ei.csv', index=False)
+
+
+    from scipy.sparse import coo_matrix
+    m = np.matrix(filtered[1:])
+
+    bool_matrix = np.add(plot_excit,plot_inhib)
+    with open('bool_matrix.p','wb') as f:
+       pickle.dump(bool_matrix,f, protocol=2)
+
+    if not isinstance(m, coo_matrix):
+        m = coo_matrix(m)
+
+    Gexc_ud = nx.Graph(plot_excit)
+    avg_clustering = nx.average_clustering(Gexc_ud)#, nodes=None, weight=None, count_zeros=True)[source]
+
+    rc = nx.rich_club_coefficient(Gexc_ud,normalized=False)
+    print('This graph structure as rich as: ',rc[0])
+    gexc = nx.DiGraph(plot_excit)
+
+    gexcc = nx.betweenness_centrality(gexc)
+    top_exc = sorted(([ (v,k) for k, v in dict(gexcc).items() ]), reverse=True)
+
+    in_degree = gexc.in_degree()
+    top_in = sorted(([ (v,k) for k, v in in_degree.items() ]))
+    in_hub = top_in[-1][1]
+    out_degree = gexc.out_degree()
+    top_out = sorted(([ (v,k) for k, v in out_degree.items() ]))
+    out_hub = top_out[-1][1]
+    mean_out = np.mean(list(out_degree.values()))
+    mean_in = np.mean(list(in_degree.values()))
+
+    mean_conns = int(mean_in + mean_out/2)
+
+    k = 2 # number of neighbouig nodes to wire.
+    p = 0.25 # probability of instead wiring to a random long range destination.
+    ne = len(plot_excit)# size of small world network
+    small_world_ring_excit = nx.watts_strogatz_graph(ne,mean_conns,0.25)
+
+
+
+    k = 2 # number of neighbouring nodes to wire.
+    p = 0.25 # probability of instead wiring to a random long range destination.
+    ni = len(plot_inhib)# size of small world network
+    small_world_ring_inhib   = nx.watts_strogatz_graph(ni,mean_conns,0.25)
+
+
+import matplotlib
+matplotlib.use('Agg')
+
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+mpl.rcParams.update({'font.size':16})
+
+
+import pickle
+import pandas as pd
+import os
 
 def sim_runner(wgf):
     wg = wgf
 
-    import pyNN.neuron as sim
+    #import pyNN.neuron as sim
+    import pyNN.spiNNaker as sim
+
     nproc = sim.num_processes()
     node = sim.rank()
     print(nproc)
-    import matplotlib
-    matplotlib.use('Agg')
-
-    import matplotlib.pyplot as plt
-    import matplotlib as mpl
-    mpl.rcParams.update({'font.size':16})
 
     #import mpi4py
     #threads  = sim.rank()
@@ -49,27 +124,7 @@ def sim_runner(wgf):
     rngseed  = 98765
     parallel_safe = False
     #extra = {'threads' : threads}
-    import os
-    import pandas as pd
-    import sys
-    import numpy as np
-    from pyNN.neuron import STDPMechanism
-    import copy
-    from pyNN.random import RandomDistribution, NumpyRNG
-    import pyNN.neuron as neuron
-    from pyNN.neuron import h
-    from pyNN.neuron import StandardCellType, ParameterSpace
-    from pyNN.random import RandomDistribution, NumpyRNG
-    from pyNN.neuron import STDPMechanism, SpikePairRule, AdditiveWeightDependence, FromListConnector, TsodyksMarkramSynapse
-    from pyNN.neuron import Projection, OneToOneConnector
-    from numpy import arange
-    import pyNN
-    from pyNN.utility import get_simulator, init_logging, normalized_filename
-    import random
-    import socket
-    #from neuronunit.optimization import get_neab
-    import networkx as nx
-    sim = pyNN.neuron
+
 
     # Get some hippocampus connectivity data, based on a conversation with
     # academic researchers on GH:
@@ -77,23 +132,26 @@ def sim_runner(wgf):
     # scrape hippocamome connectivity data, that I intend to use to program neuromorphic hardware.
     # conditionally get files if they don't exist.
 
-
+    # This is literally the starting point of the connection map
     path_xl = '_hybrid_connectivity_matrix_20171103_092033.xlsx'
+
     if not os.path.exists(path_xl):
         os.system('wget https://github.com/Hippocampome-Org/GraphTheory/files/1657258/_hybrid_connectivity_matrix_20171103_092033.xlsx')
 
     xl = pd.ExcelFile(path_xl)
-    dfEE = xl.parse()
-    dfEE.loc[0].keys()
-    dfm = dfEE.as_matrix()
+
+
+    dfall = xl.parse()
+    dfall.loc[0].keys()
+    dfm = dfall.as_matrix()
 
     rcls = dfm[:,:1] # real cell labels.
     rcls = rcls[1:]
     rcls = { k:v for k,v in enumerate(rcls) } # real cell labels, cast to dictionary
     import pickle
+
     with open('cell_names.p','wb') as f:
         pickle.dump(rcls,f)
-    import pandas as pd
     pd.DataFrame(rcls).to_csv('cell_names.csv', index=False)
 
     filtered = dfm[:,3:]
@@ -110,6 +168,9 @@ def sim_runner(wgf):
     IIlist = []
     EIlist = []
     IElist = []
+
+    with open('wire_map_online.p','wb') as f:
+        pickle.dump(filtered,f)
 
     for i,j in enumerate(filtered):
       for k,xaxis in enumerate(j):
@@ -129,14 +190,13 @@ def sim_runner(wgf):
     with open('cell_indexs.p','wb') as f:
         returned_list = [index_exc, index_inh]
         pickle.dump(returned_list,f)
-
+    '''
     import numpy
     a = numpy.asarray(index_exc)
     numpy.savetxt('pickles/'+str(k)+'excitatory_nunber_labels.csv', a, delimiter=",")
-    import numpy
     a = numpy.asarray(index_inh)
     numpy.savetxt('pickles/'+str(k)+'inhibitory_nunber_labels.csv', a, delimiter=",")
-
+    '''
     for i,j in enumerate(filtered):
       for k,xaxis in enumerate(j):
         if xaxis==1 or xaxis == 2:
@@ -210,15 +270,10 @@ def sim_runner(wgf):
 
     for i in EElist:
         plot_EE[i[0],i[1]] = int(0)
-        #plot_ss[i[0],i[1]] = int(1)
-
         if i[0]!=i[1]: # exclude self connections
             plot_EE[i[0],i[1]] = int(1)
-
             pre_exc.append(i[0])
             post_exc.append(i[1])
-
-
 
     assert len(pre_exc) == len(post_exc)
     for i in IIlist:
@@ -257,73 +312,6 @@ def sim_runner(wgf):
     assert len(num_inh) < ml
     # # Plot all the Projection pairs as a connection matrix (Excitatory and Inhibitory Connections)
 
-    import pickle
-    with open('graph_inhib.p','wb') as f:
-       pickle.dump(plot_inhib,f, protocol=2)
-
-
-    import pickle
-    with open('graph_excit.p','wb') as f:
-       pickle.dump(plot_excit,f, protocol=2)
-
-
-    #with open('cell_names.p','wb') as f:
-    #    pickle.dump(rcls,f)
-    import pandas as pd
-    pd.DataFrame(plot_EE).to_csv('ee.csv', index=False)
-
-    import pandas as pd
-    pd.DataFrame(plot_IE).to_csv('ie.csv', index=False)
-
-    import pandas as pd
-    pd.DataFrame(plot_II).to_csv('ii.csv', index=False)
-
-    import pandas as pd
-    pd.DataFrame(plot_EI).to_csv('ei.csv', index=False)
-
-
-    from scipy.sparse import coo_matrix
-    m = np.matrix(filtered[1:])
-
-    bool_matrix = np.add(plot_excit,plot_inhib)
-    with open('bool_matrix.p','wb') as f:
-       pickle.dump(bool_matrix,f, protocol=2)
-
-    if not isinstance(m, coo_matrix):
-        m = coo_matrix(m)
-
-    Gexc_ud = nx.Graph(plot_excit)
-    avg_clustering = nx.average_clustering(Gexc_ud)#, nodes=None, weight=None, count_zeros=True)[source]
-
-    rc = nx.rich_club_coefficient(Gexc_ud,normalized=False)
-    print('This graph structure as rich as: ',rc[0])
-    gexc = nx.DiGraph(plot_excit)
-
-    gexcc = nx.betweenness_centrality(gexc)
-    top_exc = sorted(([ (v,k) for k, v in dict(gexcc).items() ]), reverse=True)
-
-    in_degree = gexc.in_degree()
-    top_in = sorted(([ (v,k) for k, v in in_degree.items() ]))
-    in_hub = top_in[-1][1]
-    out_degree = gexc.out_degree()
-    top_out = sorted(([ (v,k) for k, v in out_degree.items() ]))
-    out_hub = top_out[-1][1]
-    mean_out = np.mean(list(out_degree.values()))
-    mean_in = np.mean(list(in_degree.values()))
-
-    mean_conns = int(mean_in + mean_out/2)
-
-    k = 2 # number of neighbouig nodes to wire.
-    p = 0.25 # probability of instead wiring to a random long range destination.
-    ne = len(plot_excit)# size of small world network
-    small_world_ring_excit = nx.watts_strogatz_graph(ne,mean_conns,0.25)
-
-
-
-    k = 2 # number of neighbouring nodes to wire.
-    p = 0.25 # probability of instead wiring to a random long range destination.
-    ni = len(plot_inhib)# size of small world network
-    small_world_ring_inhib   = nx.watts_strogatz_graph(ni,mean_conns,0.25)
 
 
     nproc = sim.num_processes()
@@ -333,51 +321,21 @@ def sim_runner(wgf):
     print("Host #%d is on %s" % (node_id + 1, host_name))
     rng = NumpyRNG(seed=64754)
 
-    #pop_size = len(num_exc)+len(num_inh)
-    #num_exc = [ i for i,e in enumerate(plot_excit) if sum(e) > 0 ]
-    #num_inh = [ y for y,i in enumerate(plot_inhib) if sum(i) > 0 ]
-    #pop_exc =  sim.Population(len(num_exc), sim.Izhikevich(a=0.02, b=0.2, c=-65, d=8, i_offset=0))
-    #pop_inh = sim.Population(len(num_inh), sim.Izhikevich(a=0.02, b=0.25, c=-65, d=2, i_offset=0))
 
-
-    #index_exc = list(set(sanity_e))
-    #index_inh = list(set(sanity_i))
     all_cells = sim.Population(len(index_exc)+len(index_inh), sim.Izhikevich(a=0.02, b=0.2, c=-65, d=8, i_offset=0))
-    #all_cells = None
-    #all_cells = pop_exc + pop_inh
     pop_exc = sim.PopulationView(all_cells,index_exc)
     pop_inh = sim.PopulationView(all_cells,index_inh)
-    #print(pop_exc)
-    #print(dir(pop_exc))
+
     for pe in pop_exc:
-        print(pe)
-        #import pdb
         pe = all_cells[pe]
-        #pdb.set_trace()
-        #pe = all_cells[i]
         r = random.uniform(0.0, 1.0)
         pe.set_parameters(a=0.02, b=0.2, c=-65+15*r, d=8-r**2, i_offset=0)
-        #pop_exc.append(pe)
 
-    #pop_exc = sim.Population(pop_exc)
     for pi in index_inh:
         pi = all_cells[pi]
-        #print(pi)
-        #pi = all_cells[i]
         r = random.uniform(0.0, 1.0)
         pi.set_parameters(a=0.02+0.08*r, b=0.25-0.05*r, c=-65, d= 2, i_offset=0)
-        #pop_inh.append(pi)
-    #pop_inh = sim.Population(pop_inh)
 
-    '''
-    for pe in pop_exc:
-        r = random.uniform(0.0, 1.0)
-        pe.set_parameters(a=0.02, b=0.2, c=-65+15*r, d=8-r**2, i_offset=0)
-
-    for pi in pop_inh:
-        r = random.uniform(0.0, 1.0)
-        pi.set_parameters(a=0.02+0.08*r, b=0.25-0.05*r, c=-65, d= 2, i_offset=0)
-    '''
     NEXC = len(num_exc)
     NINH = len(num_inh)
 
@@ -445,6 +403,9 @@ def sim_runner(wgf):
     data = None
     data = all_cells.get_data().segments[0]
 
+    if not os.path.exists("pickles"):
+        os.mkdir("pickles")
+
     #print(len(data.analogsignals[0].times))
     with open('pickles/qi'+str(wg)+'.p', 'wb') as f:
         pickle.dump(data,f)
@@ -453,6 +414,7 @@ def sim_runner(wgf):
     data = None
     noise = None
 
+sim_runner(0.5)
 
 
 #iter_sim = [ (i,wg) for i,wg in enumerate(weight_gain_factors.keys()) ]

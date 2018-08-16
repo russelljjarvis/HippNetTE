@@ -1,4 +1,23 @@
+
+import os
+os.listdir(".")
+import copy
+import sys
+import numpy as np
+from numpy import arange
+import pyNN
+from pyNN.utility import get_simulator, init_logging, normalized_filename
+import random
+import socket
+import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import pickle
+
+
 spiNNaker = True
+
 if spiNNaker == True:
     import pacman
     print(dir(pacman))
@@ -38,30 +57,6 @@ if spiNNaker == False:
 
 
 
-import os
-import copy
-import numpy as np
-import sys
-import numpy as np
-from numpy import arange
-import pyNN
-from pyNN.utility import get_simulator, init_logging, normalized_filename
-import random
-import socket
-import pandas as pd
-import matplotlib
-matplotlib.use('Agg')
-
-import matplotlib.pyplot as plt
-
-
-import pickle
-import pandas as pd
-import os
-os.listdir(".")
-
-import pickle
-#import pickle
 
 
 
@@ -204,7 +199,6 @@ def sim_runner(wg,sim):
             pre_exc.append(i[0])
             post_exc.append(i[1])
 
-    assert len(pre_exc) == len(post_exc)
     for i in IIlist:
         plot_II[i[0],i[1]] = int(0)
         if i[0]!=i[1]:
@@ -229,6 +223,7 @@ def sim_runner(wg,sim):
     plot_excit = plot_EI + plot_EE
     plot_inhib = plot_IE + plot_II
 
+    assert len(pre_exc) == len(post_exc)
     assert len(pre_inh) == len(post_inh)
 
     num_exc = [ i for i,e in enumerate(plot_excit) if sum(e) > 0 ]

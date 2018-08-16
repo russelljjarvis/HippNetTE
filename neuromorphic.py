@@ -61,6 +61,7 @@ import os
 os.listdir(".")
 
 import pickle
+#import pickle
 
 
 
@@ -117,56 +118,42 @@ def sim_runner(wg,sim):
 
     sanity_e = []
     sanity_i = []
-
     EElist = []
     IIlist = []
     EIlist = []
     IElist = []
 
-    for i,j in enumerate(filtered):
-        for k,xaxis in enumerate(j):
-            if xaxis == 1 or xaxis == 2:
-                source = i
-                sanity_e.append(i)
-                target = k
+    flat_iter = [ (i,j,k,xaxis) for i,j in enumerate(filtered) for k,xaxis in enumerate(j) ]:
+    for (i,j,k,xaxis) in flat_iter:
+        if xaxis==1 or xaxis == 2:
+            source = i
+            sanity_e.append(i)
+            target = k
+            delay = delay_distr.next()
+            weight = 1.0
+            if target in index_inh:
+                EIlist.append((source,target,delay,weight))
+            else:
+                EElist.append((source,target,delay,weight))
 
-            if xaxis ==-1 or xaxis == -2:
-                sanity_i.append(i)
-                source = i
-                target = k
+        if xaxis==-1 or xaxis == -2:
+            sanity_i.append(i)
+            source = i
+            target = k
+            delay = delay_distr.next()
+            weight = 1.0
+            if target in index_exc:
+                IElist.append((source,target,delay,weight))
+            else:
+                IIlist.append((source,target,delay,weight))
+
 
     index_exc = list(set(sanity_e))
     index_inh = list(set(sanity_i))
-    import pickle
+
     with open('cell_indexs.p','wb') as f:
         returned_list = [index_exc, index_inh]
         pickle.dump(returned_list,f)
-
-    for i,j in enumerate(filtered):
-        for k,xaxis in enumerate(j):
-            if xaxis==1 or xaxis == 2:
-                source = i
-                sanity_e.append(i)
-                target = k
-                delay = delay_distr.next()
-                weight = 1.0
-                if target in index_inh:
-                    EIlist.append((source,target,delay,weight))
-                else:
-                    EElist.append((source,target,delay,weight))
-
-            if xaxis==-1 or xaxis == -2:
-                sanity_i.append(i)
-
-                source = i
-                target = k
-                delay = delay_distr.next()
-                weight = 1.0
-                if target in index_exc:
-                    IElist.append((source,target,delay,weight))
-                else:
-                    IIlist.append((source,target,delay,weight))
-
 
     internal_conn_ee = sim.FromListConnector(EElist)
     ee = internal_conn_ee.conn_list
@@ -197,14 +184,11 @@ def sim_runner(wg,sim):
         assert i[0] in ii_srcs
         assert i[1] in ii_tgs
 
-
     ml = len(filtered[1])+1
     pre_exc = []
     post_exc = []
     pre_inh = []
     post_inh = []
-
-
     rng = NumpyRNG(seed=64754)
     delay_distr = RandomDistribution('normal', [2, 1e-1], rng=rng)
 
@@ -255,8 +239,7 @@ def sim_runner(wg,sim):
     assert np.sum(plot_inhib) > np.sum(plot_excit)
     assert len(num_exc) < ml
     assert len(num_inh) < ml
-    # # Plot all the Projection pairs as a connection matrix (Excitatory and Inhibitory Connections)
-
+    # Plot all the Projection pairs as a connection matrix (Excitatory and Inhibitory Connections)
     rng = NumpyRNG(seed=64754)
 
     all_cells = sim.Population(len(index_exc)+len(index_inh), sim.Izhikevich(a=0.02, b=0.2, c=-65, d=8, i_offset=0))
@@ -294,11 +277,10 @@ def sim_runner(wg,sim):
     prj_change(prj_inh_exc,wg)
     prj_change(prj_inh_inh,wg)
 
-    prj_check(prj_exc_exc)
-    prj_check(prj_exc_inh)
-    prj_check(prj_inh_exc)
-    prj_check(prj_inh_inh)
-
+    #prj_check(prj_exc_exc)
+    #prj_check(prj_exc_inh)
+    #prj_check(prj_inh_exc)
+    #prj_check(prj_inh_inh)
 
     noise = sim.NoisyCurrentSource(mean=0.74/1000.0, stdev=4.00/1000.0, start=0.0, stop=2000.0, dt=1.0)
     pop_exc.inject(noise)

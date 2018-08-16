@@ -1,5 +1,23 @@
 
-# Code for finding the the rheobase current injection values of excitatory and inhibitory neurons.
+# This works for sure:
+import pyNN.spiNNaker as sim
+import numpy as np
+import matplotlib.pyplot as plt
+sim.setup(timestep=1.0, min_delay=1.0)
+print(dir(sim))
+all_cells = sim.Population(100, sim.Izhikevich(a=0.02, b=0.2, c=-65, d=8, i_offset=0))
+pop = sim.Population(100, sim.Izhikevich(i_offset=0))
+pop.record("spikes")
+sim.run(100)# delay 100ms
+
+#pop = p.Population(10, p.IF_curr_exp(i_offset=0))
+print(dir(pop))
+print(dir(pop.set))
+
+import pacman
+print(dir(pacman))
+
+
 import os
 
 
@@ -9,9 +27,12 @@ import numpy as np
 from pyNN.spiNNaker import STDPMechanism
 import copy
 from pyNN.random import RandomDistribution, NumpyRNG
-import pyNN.spiNNaker as neuron
+#import pyNN.spiNNaker as neuron
 #from pyNN.spiNNaker import h
-from pyNN.spiNNaker import StandardCellType, ParameterSpace
+#from pyNN.spiNNaker import StandardCellType, ParameterSpace
+
+# this does not work.
+
 from pyNN.random import RandomDistribution, NumpyRNG
 from pyNN.spiNNaker import STDPMechanism, SpikePairRule, AdditiveWeightDependence, FromListConnector, TsodyksMarkramSynapse
 from pyNN.spiNNaker import Projection, OneToOneConnector
@@ -22,7 +43,6 @@ import random
 import socket
 
 import pandas as pd
-import networkx as nx
 
 
 
@@ -255,7 +275,10 @@ def sim_runner(wg):
     rng = NumpyRNG(seed=64754)
 
 
+
     all_cells = sim.Population(len(index_exc)+len(index_inh), sim.Izhikevich(a=0.02, b=0.2, c=-65, d=8, i_offset=0))
+    pall_cellsop.record("spikes")
+    sim.run(100)# delay 100ms
     pop_exc = sim.PopulationView(all_cells,index_exc)
     pop_inh = sim.PopulationView(all_cells,index_inh)
 
@@ -401,17 +424,5 @@ def data_dump(plot_inhib,plot_excit,plot_EE,plot_IE,plot_II,plot_EI,filtered):
     with open('cell_names.p','wb') as f:
         pickle.dump(rcls,f)
 
-    '''
-    import numpy
-    a = numpy.asarray(index_exc)
-    numpy.savetxt('pickles/'+str(k)+'excitatory_nunber_labels.csv', a, delimiter=",")
-    a = numpy.asarray(index_inh)
-    numpy.savetxt('pickles/'+str(k)+'inhibitory_nunber_labels.csv', a, delimiter=",")
-    '''
 
 #iter_sim = [ (i,wg) for i,wg in enumerate(weight_gain_factors.keys()) ]
-#import dask.bag as db
-#iter_sim = db.from_sequence(iter_sim,4)
-#from itertools import repeat
-#_ = list(map(map_sim,iter_sim,repeat(sim)))
-#_ = list(db.map(map_sim,iter_sim).compute());

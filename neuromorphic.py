@@ -78,7 +78,11 @@ def sim_runner(wg):
     parallel_safe = False
 
     try:
-        filtered = pickle.load(open('wire_map_online.p','rb'))
+        os.system('wget https://github.com/russelljjarvis/HippNetTE/blob/master/wire_map_online.p?raw=true')
+        #os.system('mv wire_map_online.p?raw=true wire_map_online.p')
+        filtered = pickle.load(open('wire_map_online.p?raw=true','rb'))
+        with open('wire_map_online.p','wb') as f:
+            pickle.dump(filtered,f, protocol=2)
     except:
         # Get some hippocampus connectivity data, based on a conversation with
         # academic researchers on GH:
@@ -106,8 +110,9 @@ def sim_runner(wg):
         pd.DataFrame(rcls).to_csv('cell_names.csv', index=False)
         filtered = dfm[:,3:]
         filtered = filtered[1:]
+        #pickle.dump(your_object, your_file, protocol=2)
         with open('wire_map_online.p','wb') as f:
-            pickle.dump(filtered,f)
+            pickle.dump(filtered,f, protocol=2)
 
 
     rng = NumpyRNG(seed=64754)

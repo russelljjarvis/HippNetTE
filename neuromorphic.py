@@ -4,15 +4,7 @@ import pyNN.spiNNaker as sim
 import numpy as np
 import matplotlib.pyplot as plt
 sim.setup(timestep=1.0, min_delay=1.0)
-print(dir(sim))
-all_cells = sim.Population(100, sim.Izhikevich(a=0.02, b=0.2, c=-65, d=8, i_offset=0))
-pop = sim.Population(100, sim.Izhikevich(i_offset=0))
-pop.record("spikes")
-sim.run(100)# delay 100ms
 
-#pop = p.Population(10, p.IF_curr_exp(i_offset=0))
-print(dir(pop))
-print(dir(pop.set))
 
 import pacman
 print(dir(pacman))
@@ -27,14 +19,11 @@ import numpy as np
 from pyNN.spiNNaker import STDPMechanism
 import copy
 from pyNN.random import RandomDistribution, NumpyRNG
-#import pyNN.spiNNaker as neuron
-#from pyNN.spiNNaker import h
-#from pyNN.spiNNaker import StandardCellType, ParameterSpace
 
 # this does not work.
 
 from pyNN.random import RandomDistribution, NumpyRNG
-from pyNN.spiNNaker import STDPMechanism, SpikePairRule, AdditiveWeightDependence, FromListConnector, TsodyksMarkramSynapse
+from pyNN.spiNNaker import STDPMechanism, SpikePairRule, AdditiveWeightDependence, FromListConnector
 from pyNN.spiNNaker import Projection, OneToOneConnector
 from numpy import arange
 import pyNN
@@ -44,14 +33,10 @@ import socket
 
 import pandas as pd
 
-
-
 import matplotlib
 matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
-#import matplotlib as mpl
-#mpl.rcParams.update({'font.size':16})
 
 
 import pickle

@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import pickle
 
 
-spiNNaker = True
+spiNNaker = False
 
 if spiNNaker == True:
     import pacman
@@ -25,20 +25,17 @@ if spiNNaker == True:
     import matplotlib.pyplot as plt
     sim.setup(timestep=1.0, min_delay=1.0)
     from pyNN.spiNNaker import STDPMechanism
-    from pyNN.random import RandomDistribution, NumpyRNG
-    from pyNN.random import RandomDistribution, NumpyRNG
     from pyNN.spiNNaker import STDPMechanism, SpikePairRule, AdditiveWeightDependence, FromListConnector
     from pyNN.spiNNaker import Projection, OneToOneConnector
-    from pyNN.spiNNaker import ParameterSpace
+    #from pyNN.spiNNaker import ParameterSpace
     import pyNN.spiNNaker as sim
 
 
 if spiNNaker == False:
-    from pyNN.random import RandomDistribution, NumpyRNG
+    #from pyNN.random import RandomDistribution, NumpyRNG
     import pyNN.neuron as neuron
     from pyNN.neuron import h	#from pyNN.spiNNaker import h
     from pyNN.neuron import StandardCellType, ParameterSpace
-    from pyNN.random import RandomDistribution, NumpyRNG
     from pyNN.random import RandomDistribution, NumpyRNG
     from pyNN.neuron import STDPMechanism, SpikePairRule, AdditiveWeightDependence, FromListConnector, TsodyksMarkramSynapse
     from pyNN.neuron import Projection, OneToOneConnector
@@ -56,8 +53,20 @@ if spiNNaker == False:
     parallel_safe = False
 
 
+from pyNN.random import RandomDistribution, NumpyRNG
 
 
+
+def get_sets(xx):
+    xx = xx.conn_list
+    xx_srcs = set([ int(e[0]) for e in xx ])
+    xx_tgs = set([ int(e[1]) for e in xx ])
+    return xx_srcs, xx_tgs
+
+def con_check_one(xx_cl,xx_srcs,xx_tgs):
+    for xo in xx_cl.conn_list:
+        assert xo[0] in xx_srcs
+        assert xo[1] in xx_tgs
 
 
 def prj_change(prj,wg):
@@ -70,17 +79,17 @@ def prj_check(prj):
 def sim_runner(wg,sim):
     # inputs wg (weight gain factor)
     # outputs neo epys recording vectors.
-    try:
+    if spiNNaker == False:
         import pyNN.neuron as sim
-    except:
+    if spiNNaker == True:
         import pyNN.spiNNaker as sim
+
+
     try:
-        os.system('wget https://github.com/russelljjarvis/HippNetTE/blob/master/wire_map_online.p?raw=true')
-        #os.system('mv wire_map_online.p?raw=true wire_map_online.p')
-        filtered = pickle.load(open('wire_map_online.p?raw=true','rb'))
-        with open('wire_map_online.p','wb') as f:
-            pickle.dump(filtered,f, protocol=2)
+        with open('internal_connectivities.p','rb') as f:
+            [conn_ee,conn_ie,conn_ei,conn_ii,index_exc,index_inh] = pickle.load(f)
     except:
+
         # Get some hippocampus connectivity data, based on a conversation with
         # academic researchers on GH:
         # https://github.com/Hippocampome-Org/GraphTheory/issues?q=is%3Aissue+is%3Aclosed
@@ -106,143 +115,69 @@ def sim_runner(wg,sim):
             pickle.dump(filtered,f, protocol=2)
 
 
-    rng = NumpyRNG(seed=64754)
-    delay_distr = RandomDistribution('normal', [2, 1e-1], rng=rng)
-    weight_distr = RandomDistribution('normal', [45, 1e-1], rng=rng)
+        rng = NumpyRNG(seed=64754)
+        delay_distr = RandomDistribution('normal', [2, 1e-1], rng=rng)
+        weight_distr = RandomDistribution('normal', [45, 1e-1], rng=rng)
 
+        flat_iter = [ (i,j,k,xaxis) for i,j in enumerate(filtered) for k,xaxis in enumerate(j) ]
+        index_exc = list(set( source for (source,j,target,xaxis) in flat_iter if xaxis==1 or xaxis == 2 ))
+        index_inh = list(set( source for (source,j,target,xaxis) in flat_iter if xaxis==-1 or xaxis == -2 ))
 
-    sanity_e = []
-    sanity_i = []
-    EElist = []
-    IIlist = []
-    EIlist = []
-    IElist = []
-
-    flat_iter = [ (i,j,k,xaxis) for i,j in enumerate(filtered) for k,xaxis in enumerate(j) ]:
-    for (i,j,k,xaxis) in flat_iter:
-        if xaxis==1 or xaxis == 2:
-            source = i
-            sanity_e.append(i)
-            target = k
+        EElist = []
+        IIlist = []
+        EIlist = []
+        IElist = []
+        for (source,j,target,xaxis) in flat_iter:
             delay = delay_distr.next()
-            weight = 1.0
-            if target in index_inh:
-                EIlist.append((source,target,delay,weight))
-            else:
-                EElist.append((source,target,delay,weight))
+            weight = 1.0 # will be updated later.
+            if xaxis==1 or xaxis == 2:
+                if target in index_inh:
+                    EIlist.append((source,target,delay,weight))
+                else:
+                    EElist.append((source,target,delay,weight))
 
-        if xaxis==-1 or xaxis == -2:
-            sanity_i.append(i)
-            source = i
-            target = k
-            delay = delay_distr.next()
-            weight = 1.0
-            if target in index_exc:
-                IElist.append((source,target,delay,weight))
-            else:
-                IIlist.append((source,target,delay,weight))
+            if xaxis==-1 or xaxis == -2:
+                if target in index_exc:
+                    IElist.append((source,target,delay,weight))
+                else:
+                    IIlist.append((source,target,delay,weight))
+
+        conn_ee = sim.FromListConnector(EElist)
+        conn_ie = sim.FromListConnector(IElist)
+        conn_ei = sim.FromListConnector(EIlist)
+        conn_ii = sim.FromListConnector(IIlist)
 
 
-    index_exc = list(set(sanity_e))
-    index_inh = list(set(sanity_i))
+        with open('internal_connectivities.p','wb') as f:
+            pickle.dump([conn_ee,conn_ie,conn_ei,conn_ii,index_exc,index_inh],f,protocol=2)
 
-    with open('cell_indexs.p','wb') as f:
-        returned_list = [index_exc, index_inh]
-        pickle.dump(returned_list,f)
 
-    internal_conn_ee = sim.FromListConnector(EElist)
-    ee = internal_conn_ee.conn_list
-    print(np.shape(ee))
-    ee_srcs = ee[:,0]
-    ee_tgs = ee[:,1]
+    ii_srcs, ii_tgs = get_sets(conn_ii)
+    ei_srcs, ei_tgs = get_sets(conn_ei)
+    ee_srcs, ee_tgs = get_sets(conn_ee)
+    ie_srcs, ie_tgs = get_sets(conn_ie)
 
-    internal_conn_ie = sim.FromListConnector(IElist)
-    ie = internal_conn_ie.conn_list
-    ie_srcs = set([ int(e[0]) for e in ie ])
-    ie_tgs = set([ int(e[1]) for e in ie ])
+    _ = con_check_one(conn_ee,ee_srcs, ee_tgs)
+    _ = con_check_one(conn_ii,ii_srcs,ii_tgs)
+    _ = con_check_one(conn_ei,ei_srcs,ei_tgs)
+    _ = con_check_one(conn_ie,ie_srcs,ie_tgs)
 
-    internal_conn_ei = sim.FromListConnector(EIlist)
-    ei = internal_conn_ei.conn_list
-    ei_srcs = set([ int(e[0]) for e in ei ])
-    ei_tgs = set([ int(e[1]) for e in ei ])
+    len_es_srcs = len(list(ee_srcs))
 
-    internal_conn_ii = sim.FromListConnector(IIlist)
-    ii = internal_conn_ii.conn_list
-    ii_srcs = set([ int(e[0]) for e in ii ])
-    ii_tgs = set([ int(e[1]) for e in ii ])
-
-    for e in internal_conn_ee.conn_list:
-        assert e[0] in ee_srcs
-        assert e[1] in ee_tgs
-
-    for i in internal_conn_ii.conn_list:
-        assert i[0] in ii_srcs
-        assert i[1] in ii_tgs
-
-    ml = len(filtered[1])+1
-    pre_exc = []
-    post_exc = []
-    pre_inh = []
-    post_inh = []
-    rng = NumpyRNG(seed=64754)
-    delay_distr = RandomDistribution('normal', [2, 1e-1], rng=rng)
-
-    plot_EE = np.zeros(shape=(ml,ml), dtype=bool)
-    plot_II = np.zeros(shape=(ml,ml), dtype=bool)
-    plot_EI = np.zeros(shape=(ml,ml), dtype=bool)
-    plot_IE = np.zeros(shape=(ml,ml), dtype=bool)
-
-    for i in EElist:
-        plot_EE[i[0],i[1]] = int(0)
-        if i[0]!=i[1]: # exclude self connections
-            plot_EE[i[0],i[1]] = int(1)
-            pre_exc.append(i[0])
-            post_exc.append(i[1])
-
-    for i in IIlist:
-        plot_II[i[0],i[1]] = int(0)
-        if i[0]!=i[1]:
-            plot_II[i[0],i[1]] = int(1)
-            pre_inh.append(i[0])
-            post_inh.append(i[1])
-
-    for i in IElist:
-        plot_IE[i[0],i[1]] = int(0)
-        if i[0]!=i[1]: # exclude self connections
-            plot_IE[i[0],i[1]] = int(1)
-            pre_inh.append(i[0])
-            post_inh.append(i[1])
-
-    for i in EIlist:
-        plot_EI[i[0],i[1]] = int(0)
-        if i[0]!=i[1]:
-            plot_EI[i[0],i[1]] = int(1)
-            pre_exc.append(i[0])
-            post_exc.append(i[1])
-
-    plot_excit = plot_EI + plot_EE
-    plot_inhib = plot_IE + plot_II
-
-    assert len(pre_exc) == len(post_exc)
-    assert len(pre_inh) == len(post_inh)
-
-    num_exc = [ i for i,e in enumerate(plot_excit) if sum(e) > 0 ]
-    num_inh = [ y for y,i in enumerate(plot_inhib) if sum(i) > 0 ]
 
     # the network is dominated by inhibitory neurons, which is unusual for modellers.
-    assert num_inh > num_exc
-    assert np.sum(plot_inhib) > np.sum(plot_excit)
-    assert len(num_exc) < ml
-    assert len(num_inh) < ml
     # Plot all the Projection pairs as a connection matrix (Excitatory and Inhibitory Connections)
     rng = NumpyRNG(seed=64754)
+    rng = NumpyRNG(seed=64754)
+    delay_distr = RandomDistribution('normal', [2, 1e-1], rng=rng)
 
     all_cells = sim.Population(len(index_exc)+len(index_inh), sim.Izhikevich(a=0.02, b=0.2, c=-65, d=8, i_offset=0))
     all_cells.record("spikes")
     sim.run(100)# delay 100ms
     pop_exc = sim.PopulationView(all_cells,index_exc)
     pop_inh = sim.PopulationView(all_cells,index_inh)
-
+    NEXC = len(pop_exc)
+    NINH = len(pop_inh)
     # add random variation into Izhi parameters
     for pe in pop_exc:
         pe = all_cells[pe]
@@ -254,17 +189,15 @@ def sim_runner(wg,sim):
         r = random.uniform(0.0, 1.0)
         pi.set_parameters(a=0.02+0.08*r, b=0.25-0.05*r, c=-65, d= 2, i_offset=0)
 
-    NEXC = len(num_exc)
-    NINH = len(num_inh)
-
+    [ all_cells[i].get_parameters() for i,_ in enumerate(all_cells) ]
     exc_syn = sim.StaticSynapse(weight = wg, delay=delay_distr)
-    assert np.any(internal_conn_ee.conn_list[:,0]) < ee_srcs.size
-    prj_exc_exc = sim.Projection(all_cells, all_cells, internal_conn_ee, exc_syn, receptor_type='excitatory')
-    prj_exc_inh = sim.Projection(all_cells, all_cells, internal_conn_ei, exc_syn, receptor_type='excitatory')
+    assert np.any(conn_ee.conn_list[:,0]) < len_es_srcs
+    prj_exc_exc = sim.Projection(all_cells, all_cells, conn_ee, exc_syn, receptor_type='excitatory')
+    prj_exc_inh = sim.Projection(all_cells, all_cells, conn_ei, exc_syn, receptor_type='excitatory')
     inh_syn = sim.StaticSynapse(weight = wg, delay=delay_distr)
     delay_distr = RandomDistribution('normal', [1, 100e-3], rng=rng)
-    prj_inh_inh = sim.Projection(all_cells, all_cells, internal_conn_ii, inh_syn, receptor_type='inhibitory')
-    prj_inh_exc = sim.Projection(all_cells, all_cells, internal_conn_ie, inh_syn, receptor_type='inhibitory')
+    prj_inh_inh = sim.Projection(all_cells, all_cells, conn_ii, inh_syn, receptor_type='inhibitory')
+    prj_inh_exc = sim.Projection(all_cells, all_cells, conn_ie, inh_syn, receptor_type='inhibitory')
     inh_distr = RandomDistribution('normal', [1, 2.1e-3], rng=rng)
 
     prj_change(prj_exc_exc,wg)
@@ -272,10 +205,10 @@ def sim_runner(wg,sim):
     prj_change(prj_inh_exc,wg)
     prj_change(prj_inh_inh,wg)
 
-    #prj_check(prj_exc_exc)
-    #prj_check(prj_exc_inh)
-    #prj_check(prj_inh_exc)
-    #prj_check(prj_inh_inh)
+    prj_check(prj_exc_exc)
+    prj_check(prj_exc_inh)
+    prj_check(prj_inh_exc)
+    prj_check(prj_inh_inh)
 
     noise = sim.NoisyCurrentSource(mean=0.74/1000.0, stdev=4.00/1000.0, start=0.0, stop=2000.0, dt=1.0)
     pop_exc.inject(noise)
@@ -297,7 +230,8 @@ def sim_runner(wg,sim):
     # === Run the simulation =====================================================
     tstop = 2000.0
     sim.run(tstop)
-    data = None
+    print(len(all_cells))
+    import pdb; pdb.set_trace()
     data = all_cells.get_data().segments[0]
 
     if not os.path.exists("pickles"):
@@ -306,11 +240,23 @@ def sim_runner(wg,sim):
     with open('pickles/qi'+str(wg)+'.p', 'wb') as f:
         pickle.dump(data,f)
 
-    return
 
-_ = sim_runner(0.5,sim)
+data = sim_runner(0.5,sim)
 
 def data_dump(plot_inhib,plot_excit,plot_EE,plot_IE,plot_II,plot_EI,filtered):
+    num_exc = [ i for i,e in enumerate(plot_excit) if sum(e) > 0 ]
+    num_inh = [ y for y,i in enumerate(plot_inhib) if sum(i) > 0 ]
+    assert num_inh > num_exc
+
+    assert len(num_exc) < ml
+    assert len(num_inh) < ml
+
+    assert np.sum(plot_inhib) > np.sum(plot_excit)
+
+    with open('cell_indexs.p','wb') as f:
+        returned_list = [index_exc, index_inh]
+        pickle.dump(returned_list,f)
+
     import pandas as pd
     from scipy.sparse import coo_matrix
     import pickle
@@ -371,6 +317,43 @@ def data_dump(plot_inhib,plot_excit,plot_EE,plot_IE,plot_II,plot_EI,filtered):
 
     with open('cell_names.p','wb') as f:
         pickle.dump(rcls,f)
+
+
+    plot_EE = np.zeros(shape=(ml,ml), dtype=bool)
+    plot_II = np.zeros(shape=(ml,ml), dtype=bool)
+    plot_EI = np.zeros(shape=(ml,ml), dtype=bool)
+    plot_IE = np.zeros(shape=(ml,ml), dtype=bool)
+
+    for i in EElist:
+        plot_EE[i[0],i[1]] = int(0)
+        if i[0]!=i[1]: # exclude self connections
+            plot_EE[i[0],i[1]] = int(1)
+            pre_exc.append(i[0])
+            post_exc.append(i[1])
+
+    for i in IIlist:
+        plot_II[i[0],i[1]] = int(0)
+        if i[0]!=i[1]:
+            plot_II[i[0],i[1]] = int(1)
+            pre_inh.append(i[0])
+            post_inh.append(i[1])
+
+    for i in IElist:
+        plot_IE[i[0],i[1]] = int(0)
+        if i[0]!=i[1]: # exclude self connections
+            plot_IE[i[0],i[1]] = int(1)
+            pre_inh.append(i[0])
+            post_inh.append(i[1])
+
+    for i in EIlist:
+        plot_EI[i[0],i[1]] = int(0)
+        if i[0]!=i[1]:
+            plot_EI[i[0],i[1]] = int(1)
+            pre_exc.append(i[0])
+            post_exc.append(i[1])
+
+    plot_excit = plot_EI + plot_EE
+    plot_inhib = plot_IE + plot_II
 
 
 #iter_sim = [ (i,wg) for i,wg in enumerate(weight_gain_factors.keys()) ]

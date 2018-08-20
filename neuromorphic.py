@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import pickle
 
 
-spiNNaker = False
+spiNNaker = True
 
 if spiNNaker == True:
     import pacman
@@ -167,7 +167,6 @@ def sim_runner(wg,sim):
 
     # the network is dominated by inhibitory neurons, which is unusual for modellers.
     # Plot all the Projection pairs as a connection matrix (Excitatory and Inhibitory Connections)
-    rng = NumpyRNG(seed=64754)
     rng = NumpyRNG(seed=64754)
     delay_distr = RandomDistribution('normal', [2, 1e-1], rng=rng)
 

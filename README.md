@@ -6,8 +6,7 @@ Visualize this modelled network:
 
 
 
-# Reproduction of the group Assignment MAT/BIO 494 Data Analysis in Neuroscience
-
+# Activity pattern implied by wiring map:
 ## Reproduction Steps:
 
 Using a dedicated Docker container we used python3 to programmatically download a file _hybrid_connectivity_matrix_20171103_092033.xlsx_ inside a script _qi_ascoli.py_ (the file was named after the two authors, whose publications most informed our work[1][2]).

@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import pickle
 
 
-spiNNaker = False
+spiNNaker = True
 
 if spiNNaker == True:
     import pacman
@@ -86,8 +86,10 @@ def sim_runner(wg,sim):
 
 
     try:
-        with open('internal_connectivities.p','rb') as f:
+        os.system('wget https://github.com/russelljjarvis/HippNetTE/blob/master/internal_connectivities.p?raw=true')
+        with open('internal_connectivities.p?raw=true','rb') as f:
             [conn_ee,conn_ie,conn_ei,conn_ii,index_exc,index_inh] = pickle.load(f)
+            print(conn_ee,conn_ie,conn_ei,conn_ii,index_exc,index_inh)
     except:
 
         # Get some hippocampus connectivity data, based on a conversation with
@@ -110,10 +112,6 @@ def sim_runner(wg,sim):
         pd.DataFrame(rcls).to_csv('cell_names.csv', index=False)
         filtered = dfm[:,3:]
         filtered = filtered[1:]
-        #pickle.dump(your_object, your_file, protocol=2)
-        with open('wire_map_online.p','wb') as f:
-            pickle.dump(filtered,f, protocol=2)
-
 
         rng = NumpyRNG(seed=64754)
         delay_distr = RandomDistribution('normal', [2, 1e-1], rng=rng)
@@ -168,18 +166,16 @@ def sim_runner(wg,sim):
     # the network is dominated by inhibitory neurons, which is unusual for modellers.
     # Plot all the Projection pairs as a connection matrix (Excitatory and Inhibitory Connections)
     rng = NumpyRNG(seed=64754)
-    rng = NumpyRNG(seed=64754)
     delay_distr = RandomDistribution('normal', [2, 1e-1], rng=rng)
 
     all_cells = sim.Population(len(index_exc)+len(index_inh), sim.Izhikevich(a=0.02, b=0.2, c=-65, d=8, i_offset=0))
-    all_cells.record("spikes")
-    sim.run(100)# delay 100ms
+
     pop_exc = sim.PopulationView(all_cells,index_exc)
     pop_inh = sim.PopulationView(all_cells,index_inh)
-    NEXC = len(pop_exc)
-    NINH = len(pop_inh)
+    NEXC = len(index_exc)
+    NINH = len(index_inh)
     # add random variation into Izhi parameters
-    for pe in pop_exc:
+    for pe in index_exc:
         pe = all_cells[pe]
         r = random.uniform(0.0, 1.0)
         pe.set_parameters(a=0.02, b=0.2, c=-65+15*r, d=8-r**2, i_offset=0)
@@ -229,9 +225,14 @@ def sim_runner(wg,sim):
     all_cells.initialize(v=-65.0, u=-14.0)
     # === Run the simulation =====================================================
     tstop = 2000.0
+    all_cells.record("spikes")
+
     sim.run(tstop)
+
+    #sim.run(100)# delay 100ms
+
     print(len(all_cells))
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
     data = all_cells.get_data().segments[0]
 
     if not os.path.exists("pickles"):

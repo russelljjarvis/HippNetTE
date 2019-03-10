@@ -108,11 +108,13 @@ import pickle
 import pandas as pd
 import os
 
-def sim_runner(wgf):
-    wg = wgf
+def sim_runner(wg):
 
     #import pyNN.neuron as sim
-    import pyNN.spiNNaker as sim
+    try:
+        import pyNN.spiNNaker as sim
+    except:
+        import pyNN.neuron as sim
 
     nproc = sim.num_processes()
     node = sim.rank()

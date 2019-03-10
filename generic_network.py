@@ -74,7 +74,7 @@ def con_check_one(xx_cl,xx_srcs,xx_tgs):
         assert xo[1] in xx_tgs
 
 
-def net_sim_runner(wg,sim,synpases):
+def net_sim_runner(wg,sim,synpases,current):
     # inputs wg (weight gain factor)
     # outputs neo epys recording vectors.
     if spiNNaker == False:
@@ -82,8 +82,8 @@ def net_sim_runner(wg,sim,synpases):
     if spiNNaker == True:
         import pyNN.spiNNaker as sim
     all_cells, pop_exc, pop_inh, NEXC, NINH  = finalize_wiring(conn_ee, conn_ie, conn_ei, conn_ii)
-    data,vms,binary_trains,t_spike_axis = run_network(tstop, all_cells, pop_exc, pop_inh, NEXC, NINH)
-    return (data,vms,binary_trains,t_spike_axis)        
+    data,vms,binary_trains,t_spike_axis = run_network(current, tstop, all_cells, pop_exc, pop_inh, NEXC, NINH)
+    return (data,vms,binary_trains,t_spike_axis)
 
 def obtain_synapses(wiring_plan):
 
@@ -201,14 +201,10 @@ def finalize_wiring(conn_ee, conn_ie, conn_ei, conn_ii):
     all_cells, pop_exc, pop_inh, NEXC, NINH  = finalize_wiring(conn_ee, conn_ie, conn_ei, conn_ii)
 
 
-    def run_network(tstop, all_cells, pop_exc, pop_inh, NEXC, NINH):
-        noise = sim.NoisyCurrentSource(mean=0.74/1000.0, stdev=4.00/1000.0, start=0.0, stop=2000.0, dt=1.0)
-        pop_exc.inject(noise)
-        #1000.0 pA
-
-
-        noise = sim.NoisyCurrentSource(mean=1.440/1000.0, stdev=4.00/1000.0, start=0.0, stop=2000.0, dt=1.0)
-        pop_inh.inject(noise)
+    def run_network(current, tstop, all_cells, pop_exc, pop_inh, NEXC, NINH):
+        noisee,noisei = current
+        pop_exc.inject(noisee)
+        pop_inh.inject(noisei)
 
         ##
         # Setup and run a simulation. Note there is no current injection into the neuron.
@@ -263,39 +259,39 @@ def finalize_wiring(conn_ee, conn_ie, conn_ei, conn_ii):
 
 
 
-try:
-    os.system('wget https://github.com/russelljjarvis/HippNetTE/blob/master/internal_connectivities.p?raw=true')
-    with open('internal_connectivities.p?raw=true','rb') as f:
-        conn_ee,conn_ie,conn_ei,conn_ii,index_exc,index_inh = pickle.load(f)
+def get_dummy_synapses():
+    try:
+        os.system('wget https://github.com/russelljjarvis/HippNetTE/blob/master/internal_connectivities.p?raw=true')
+        with open('internal_connectivities.p?raw=true','rb') as f:
+            conn_ee,conn_ie,conn_ei,conn_ii,index_exc,index_inh = pickle.load(f)
+            synapses = (conn_ee, conn_ie, conn_ei, conn_ii,index_exc,index_inh)
+    except:
+
+        # Get some hippocampus connectivity data, based on a conversation with
+        # academic researchers on GH:
+        # https://github.com/Hippocampome-Org/GraphTheory/issues?q=is%3Aissue+is%3Aclosed
+        # scrape hippocamome connectivity data, that I intend to use to program neuromorphic hardware.
+        # conditionally get files if they don't exist.
+        # This is literally the starting point of the connection map
+        path_xl = '_hybrid_connectivity_matrix_20171103_092033.xlsx'
+        if not os.path.exists(path_xl):
+            os.system('wget https://github.com/Hippocampome-Org/GraphTheory/files/1657258/_hybrid_connectivity_matrix_20171103_092033.xlsx')
+        xl = pd.ExcelFile(path_xl)
+        dfall = xl.parse()
+        dfall.loc[0].keys()
+        dfm = dfall.as_matrix()
+        rcls = dfm[:,:1] # real cell labels.
+        rcls = rcls[1:]
+        rcls = { k:v for k,v in enumerate(rcls) } # real cell labels, cast to dictionary
+
+        pd.DataFrame(rcls).to_csv('cell_names.csv', index=False)
+        filtered = dfm[:,3:]
+        wire_plan = filtered[1:]
+        (conn_ee, conn_ie, conn_ei, conn_ii,index_exc,index_inh) = obtain_synapses(wire_plan)
         synapses = (conn_ee, conn_ie, conn_ei, conn_ii,index_exc,index_inh)
+    return synapsess
 
-        #print(conn_ee,conn_ie,conn_ei,conn_ii,index_exc,index_inh)
-except:
-
-    # Get some hippocampus connectivity data, based on a conversation with
-    # academic researchers on GH:
-    # https://github.com/Hippocampome-Org/GraphTheory/issues?q=is%3Aissue+is%3Aclosed
-    # scrape hippocamome connectivity data, that I intend to use to program neuromorphic hardware.
-    # conditionally get files if they don't exist.
-    # This is literally the starting point of the connection map
-    path_xl = '_hybrid_connectivity_matrix_20171103_092033.xlsx'
-    if not os.path.exists(path_xl):
-        os.system('wget https://github.com/Hippocampome-Org/GraphTheory/files/1657258/_hybrid_connectivity_matrix_20171103_092033.xlsx')
-    xl = pd.ExcelFile(path_xl)
-    dfall = xl.parse()
-    dfall.loc[0].keys()
-    dfm = dfall.as_matrix()
-    rcls = dfm[:,:1] # real cell labels.
-    rcls = rcls[1:]
-    rcls = { k:v for k,v in enumerate(rcls) } # real cell labels, cast to dictionary
-
-    pd.DataFrame(rcls).to_csv('cell_names.csv', index=False)
-    filtered = dfm[:,3:]
-    wire_plan = filtered[1:]
-    (conn_ee, conn_ie, conn_ei, conn_ii,index_exc,index_inh) = obtain_synapses(wire_plan)
-    synapses = (conn_ee, conn_ie, conn_ei, conn_ii,index_exc,index_inh)
-
-(data,vms,binary_trains,t_spike_axis) = net_sim_runner(wg,sim,synpases)
+(data,vms,binary_trains,t_spike_axis) = net_sim_runner(wg,sim,synpases,current)
 
     # with open('internal_connectivities.p','wb') as f:
     #    pickle.dump([conn_ee,conn_ie,conn_ei,conn_ii,index_exc,index_inh],f,protocol=2)

@@ -351,6 +351,26 @@ def sim_runner(wg):
     prj_inh_exc = sim.Projection(all_cells, all_cells, internal_conn_ie, inh_syn, receptor_type='inhibitory')
     inh_distr = RandomDistribution('normal', [1, 2.1e-3], rng=rng)
 
+    ext_Connector = OneToOneConnector(callback=progress_bar)
+    ext_syn = StaticSynapse(weight=JE, delay=dt)
+    '''
+    print("%d Connecting excitatory population with connection probability %g, weight %g nA and delay %g ms." % (rank, epsilon, JE, delay))
+    E_to_E = Projection(E_net, E_net, connector, E_syn, receptor_type="excitatory")
+    print("E --> E\t\t", len(E_to_E), "connections")
+    I_to_E = Projection(I_net, E_net, connector, I_syn, receptor_type="inhibitory")
+    print("I --> E\t\t", len(I_to_E), "connections")
+    input_to_E = Projection(expoisson, E_net, ext_Connector, ext_syn, receptor_type="excitatory")
+    print("input --> E\t", len(input_to_E), "connections")
+
+    print("%d Connecting inhibitory population with connection probability %g, weight %g nA and delay %g ms." % (rank, epsilon, JI, delay))
+    E_to_I = Projection(E_net, I_net, connector, E_syn, receptor_type="excitatory")
+    print("E --> I\t\t", len(E_to_I), "connections")
+    I_to_I = Projection(I_net, I_net, connector, I_syn, receptor_type="inhibitory")
+    print("I --> I\t\t", len(I_to_I), "connections")
+    input_to_I = Projection(inpoisson, I_net, ext_Connector, ext_syn, receptor_type="excitatory")
+    print("input --> I\t", len(input_to_I), "connections")
+    '''
+
 
     def prj_change(prj,wg):
         prj.setWeights(wg)
@@ -367,6 +387,7 @@ def sim_runner(wg):
     prj_check(prj_exc_inh)
     prj_check(prj_inh_exc)
     prj_check(prj_inh_inh)
+
 
     #print(rheobase['value'])
     #print(float(rheobase['value']),1.25/1000.0)

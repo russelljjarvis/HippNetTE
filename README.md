@@ -89,3 +89,7 @@ _[1]    C. L. Rees, D. W. Wheeler, D. J. Hamilton, C. M. White, A. O. Komendanto
 
 _[2]    D. Qi and Z. Xiao, “Spike trains synchrony with different coupling strengths in a hippocampus CA3 small-world network model,” in Biomedical Engineering and Informatics (BMEI), 2013 6th International Conference on, 2013, pp. 270–275."_
 # HippNetTE
+
+Different roles for simple-cell and complex-cell inhibition in V1.
+
+"The model differs from previous push-pull models in requiring dominant rather than balanced inhibition and in predicting that a population of layer 4 inhibitory neurons should respond in a contrast-dependent manner to stimuli of all orientations, although their tuning width may be similar to that of excitatory neurons. The model demonstrates that fundamental response properties of cortical layer 4 can be explained by circuitry expected to develop under correlation-based rules of synaptic plasticity, and shows how such circuitry allows the cortex to distinguish stimulus intensity from stimulus form."

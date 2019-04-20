@@ -7,38 +7,36 @@ println("include('ml.jl')")
 #println("Pkg.add('PyCall')")
 println("\n\n\n\n\n\n")
 ENV["PYTHON"] = "/opt/conda/bin/python"
-using Knet;
-using Plots;
-using StatsPlots;
+#=using Knet;
 using DataFrames;
 #using IJulia
 using PyPlot;
 using Plots;
 using GR;
+using Knet;
+using Plots;
+#using IJulia
+using PyPlot;
+using Plots;
+using GR;
+using StatsPlots;
+=#
 using Conda
 using ModernGL
 using PyCall;
-using Knet;
-using PyCall;
-using Plots;
-using StatsPlots;
-using DataFrames;
-#using IJulia
-using PyPlot;
-using Plots;
-using GR;
-using Plots;
-using StatsPlots;
-using Plots;
-using SGDOptim
+
+# using SGDOptim
 pushfirst!(PyVector(pyimport("sys")["path"]),"")
+pushfirst!(PyVector(pyimport("sys")["path"]),"/opt/conda/bin/python")
 pushfirst!(PyVector(pyimport("sys")["path"]),"/home/jovyan/neuronunit")
 pushfirst!(PyVector(pyimport("sys")["path"]),"/home/jovyan/work/sciunit")
 pushfirst!(PyVector(pyimport("sys")["path"]),"/opt/conda/lib/python3.5/site-packages")
 pushfirst!(PyVector(pyimport("sys")["path"]),"/opt/conda/lib/python3.5/site-packages/neuron")
 @pyimport pyNN
-print(varinfo())
-print(varinfo())
+#@pyimport neurounit
+
+#print(varinfo())
+#print(varinfo())
 
 #@pyimport neuronunit
 #py"""from neuronunit.optimisation import optimisation_management as om"""

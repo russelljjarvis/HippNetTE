@@ -29,4 +29,4 @@ Pkg.add("DataFrames");
 Pkg.add("Seaborn")
 Pkg.add("PyPlot")
 Pkg.add("Knet")
-Pkg.add("SGDOptim")
+# Pkg.add("SGDOptim")

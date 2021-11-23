@@ -1,3 +1,5 @@
+# Hippocampus Network Model on SpiNNaker to measure transfer Entropy
+
 Visualize this modelled network:
 
 [centrality/firing rate](https://drpetty.shinyapps.io/NetworkVisualization/)
